@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="threejs-container"></div>
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+          }
+        }
+      </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/libs/ammo.wasm.js"></script>
+    <script>
+         let model;
+         function update() {
+            // Oyun mantığınızı burada güncelleyin
+            // Örneğin, modelin pozisyonunu güncelleyin
+            if (model) {
+                model.scene.position.x += 0.1; // Her çerçevede modeli x ekseninde hareket ettir
+            }
+        }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        let mixer = undefined;
+        let controls;
+       
+        const scene = new THREE.Scene();
+
+        const camera = new THREE.PerspectiveCamera(
+            15,
+            window.innerWidth / window.innerHeight,
+            3,
+            2000
+        )
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const effect = new OutlineEffect(renderer);
+        const clock = new THREE.Clock();
+
+        Ammo().then(function (AmmoLib) {
+
+            Ammo = AmmoLib;
+
+            console.log(Ammo);
+
+            init();
+            animate();
+        });
+
+        function setGLTFLoader() {
+            const loader = new GLTFLoader();
+
+            loader.load(
+                'robo_scorpion/scene.gltf',
+                function (gltf) {
+
+                    scene.add(gltf.scene);
+                    
+                    controls.target.set(gltf.scene.position.x, gltf.scene.position.y, gltf.scene.position.z);
+                    controls.update();
+
+                    mixer = new THREE.AnimationMixer(gltf.scene);
+
+                    gltf.animations.forEach((clip) => {
+                        mixer.clipAction(clip).play();
+                    });
+                    model = gltf;
+                    model.scene.position.set(0, 0, 0);
+                },
+                function (xhr) {
+                    console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+                },
+                function (error) {
+                    console.log('An error happened');
+                }
+            );
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            effect.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function init() {
+            setGLTFLoader();
+
+            const container = document.getElementById('threejs-container');
+
+            scene.background = new THREE.Color(0xffffff);
+
+
+            camera.position.z = 15;
+
+            const ambient = new THREE.AmbientLight(0xaaaaaa, 3);
+            scene.add(ambient);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
+            directionalLight.position.set(- 1, 1, 1).normalize();
+            scene.add(directionalLight);
+
+
+
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true
+            controls.target.set(0, 1, 0)
+
+            window.addEventListener('resize', onWindowResize);
+
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const deltaTime = clock.getDelta();
+            controls.update()
+            if (mixer) {
+                mixer.update(deltaTime);
+            }
+            render();
+        }
+
+        function render() {
+            effect.render(scene, camera);
+        }
+
+    </script>
+</body>
+
+</html>
